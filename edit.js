@@ -4,16 +4,18 @@ function optimizelyEditPage() {
   // Initialize data from the input fields
   var projectId = $('#optimizely_project_id').val();
   var optly = new OptimizelyAPI($("#optimizely_token").val()); 
-  optly.experiment = {
-    id: $("#optimizely_experiment_id").val(),
-    status: $("#optimizely_experiment_status").val()
-  }
-
-  // If there's already an associated experiment, show it in the editor
-  if (optly.experiment.id) {
-    showExperiment(optly.experiment);
-  } else {
-    $('#optimizely_created').hide();
+  if(!!$("#optimizely_experiment_id").val()){
+    optly.get('experiments/'+$("#optimizely_experiment_id").val(),function(response){
+      optly.experiment = response;
+      showExperiment(optly.experiment);
+    });
+  }else{
+    optly.experiment = {
+      id: $("#optimizely_experiment_id").val(),
+      status: $("#optimizely_experiment_status").val()
+    }
+    $('#optimizely_not_created').show();
+    $('#optimizely_created').hide();  
   }
 
   // On click, run the createExperiment function
@@ -46,6 +48,7 @@ function optimizelyEditPage() {
     }
 
     // Hide create button, show status
+
     $('#optimizely_not_created').hide();
     $('#optimizely_created').show();  
 
@@ -72,7 +75,15 @@ function optimizelyEditPage() {
     post_id = $('#post_ID').val();
     experiment.description = "Wordpress ["+post_id+"]: " + $('#title').val();
     experiment.edit_url = $('#sample-permalink').text();
-
+    var loc = document.createElement('a');
+    loc.href = experiment.edit_url;
+    var urlTargetdomain = loc.hostname;
+    experiment.url_conditions = [
+      {
+        "match_type": "substring",
+        "value": urlTargetdomain
+      }
+    ];
     optly.post('projects/' + projectId + '/experiments', experiment, onExperimentCreated);
   }
 
@@ -83,24 +94,30 @@ function optimizelyEditPage() {
 
   */
   function onExperimentCreated(experiment) {
-
-    optly.experiment = experiment;
-
-    var variations = $('.optimizely_variation').filter(function(){return $(this).val().length > 0})
+    // Pause for 200ms so that the experiment is guarenteed to be created before editing and adding variations
     
-    // Set variation weights
-    var numVariations = variations.length + 1;
-    var variationWeight = Math.floor(10000 / numVariations);
-    var leftoverWeight = 10000 - variationWeight*numVariations;
+    setTimeout(function () {
+      optly.experiment = experiment;
+      var variations = $('.optimizely_variation').filter(function(){return $(this).val().length > 0})
+      
+      // Set variation weights
+      var numVariations = variations.length + 1;
+      var variationWeight = Math.floor(10000 / numVariations);
+      var leftoverWeight = 10000 - variationWeight*numVariations;
 
-    // Create variations
-    variations.each(function(index, input) {
-      var weight = variationWeight + (index == 0 ? leftoverWeight : 0);
-      createVariation(experiment, index + 1, $(input).val(), weight);
-    });
+      // Create variations
+      variations.each(function(index, input) {
+        var weight = variationWeight;
+        createVariation(experiment, index + 1, $(input).val(), weight);
+      });
 
-    // Create goal
-    createGoal(experiment);
+      // Update original with correct traffic allocation
+      var origVariationWeight = {"weight":variationWeight + (leftoverWeight > 0 ? leftoverWeight : 0)};
+      optly.patch('variations/' + experiment.variation_ids[0], origVariationWeight, checkExperimentReady);
+
+      // Create goal
+      createGoal(experiment);
+    }, 200);
 
   }
 
@@ -151,7 +168,7 @@ function optimizelyEditPage() {
       "js_component": code,
       "weight": weight,
     }
-
+    
     // Update variation #1, create the others
     if (index == 1) {
       optly.patch('variations/' + experiment.variation_ids[1], variation, checkExperimentReady);

@@ -20,20 +20,20 @@
         <li><a href="#tabs-2">Configuration</a></li>
     </ul>
     <div id="tabs-1">
-        <h2>Wordpress Headline Results</h2>
-        <p>This is a list of all of the experiments that are running headline tests.<p>
+        <h2>Wordpress Headline Results <span>This is a list of all of the experiments that are running headline tests.</span></h2>
+
         <div id="successMessage">
 
         </div>
         <!-- <div class="button" id="launchWinners">Launch Winners</div> -->
         <div id="results_list">
             <div id="ready">
-                <h2>Ready</h2>
+                <h2>Ready to launch! <span>These experiments experiments are ready to launch!</span></h2>
 
 
             </div>
             <div id="stillwaiting">
-                <h2>Almost There!</h2>
+                <h2>Not ready to launch <span>These experiments still need a few more visitors before we can declare a winner</span></h2> 
 
             </div>
             <div class="loading" id="loading">
@@ -43,8 +43,8 @@
             </div>
 
             <div id="noresults">
-              <h3>No Results Ready!</h3>
-              <p>When you create headline experiments in wordpress you will see those results here</p>
+              <h3>No results!</h3>
+              <p>A headline experiement must be created in Wordpress before any results will be displayed here. Please create a new post with multiple headlines, publish the post, and start the experiment. Once the experiment is created and running it will display the results here. <strong>Please Note:</strong> Only experiements created through Wordpress will be displayed here. Experiments created directly in Optimizely will not be displayed here. </p>
             </div>
         </div>  
 
@@ -70,13 +70,32 @@
               <input type="hidden" id="project_name" name="project_name" value="<?php echo get_option('optimizely_project_name') ?>" />
               <select id="project_id" name="project_id">
                 <?php if (get_option('optimizely_project_id')) { ?>
-                  <option value="<?php echo get_option('optimizely_project_name') ?>" selected><?php echo get_option('optimizely_project_name') ?></option>
+                  <option value="<?php echo get_option('optimizely_project_id') ?>" selected><?php echo get_option('optimizely_project_name') ?></option>
                 <?php } ?>
                 <option value="">Connect Optimizely to choose a project...</option>
               </select>
               <p>Optimizely will add the following project code to your page automatically:</p>
               <textarea class="code" id="project_code" name="project_code" readonly><?php echo get_option('optimizely_project_code') ?></textarea>
 
+              <h3>Post Types</h3>
+              <p>Please choose the post types you would like to conduct A/B testing on</p> 
+              <?php
+                $args = array(
+                  'show_ui' => true
+                );
+                $selected_post_types = explode(',',get_option('optimizely_post_types'));
+                $post_types = get_post_types($args, 'objects' ); 
+                foreach($post_types as $post_type){
+                  if($post_type->name != 'page' && $post_type->name != 'attachment'){
+                    if(in_array($post_type->name,$selected_post_types)){
+                      echo '<input type="checkbox" name="optimizely_post_types[]" value="'. $post_type->name .'" checked/>&nbsp;' . $post_type->label . '</br>';
+                    }else{
+                      echo '<input type="checkbox" name="optimizely_post_types[]" value="'. $post_type->name .'"/>&nbsp;' . $post_type->label . '</br>';
+                    }
+                    
+                  }
+                }
+              ?>
 
               <h3>Variation Code</h3>
               <p>Optimizely will use this variation code to change headlines on your site. We've provided code that works with the default theme, but you might want to add or change it to work with your themes and plugins.</p>  
